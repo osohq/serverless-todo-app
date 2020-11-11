@@ -1,148 +1,81 @@
-<!--
-title: 'AWS Serverless REST API example in NodeJS'
-description: 'This example demonstrates how to setup a RESTful Web Service allowing you to create, list, get, update and delete Todos. DynamoDB is used to store the data.'
-layout: Doc
-framework: v1
-platform: AWS
-language: nodeJS
-authorLink: 'https://github.com/ozbillwang'
-authorName: 'Bill Wang'
-authorAvatar: 'https://avatars3.githubusercontent.com/u/8954908?v=4&s=140'
--->
-# Serverless REST API
+# Adding authorization to a serverless Node.js app
 
-This example demonstrates how to setup a [RESTful Web Services](https://en.wikipedia.org/wiki/Representational_state_transfer#Applied_to_web_services) allowing you to create, list, get, update and delete Todos. DynamoDB is used to store the data. This is just an example and of course you could use any data storage as a backend.
+<!-- TODO: Add link to blog once it's published. -->
 
-## Structure
+Original project forked from
+https://github.com/serverless/examples/tree/c8ef3727917b19ff9b5cae72862a520dabae273a/aws-node-rest-api-with-dynamodb.
 
-This service has a separate directory for all the todo operations. For each operation exactly one file exists e.g. `todos/delete.js`. In each of these files there is exactly one function which is directly attached to `module.exports`.
+This example demonstrates how to use oso to add fine-grained authorization to a
+serverless app. The app uses [Serverless][serverless] to manage AWS resources.
+It consists of five Lambda functions (fronted by API Gateway) covering the
+basic CRUD operations on top of a single DynamoDB table. To track ownership,
+each todo has a `creator` field that contains a `User` populated with a few
+fields from the Lambda event payload: `country`, `sourceIp`, and `userAgent`.
 
-The idea behind the `todos` directory is that in case you want to create a service containing multiple resources e.g. users, notes, comments you could do so in the same service. While this is certainly possible you might consider creating a separate service for each resource. It depends on the use-case and your preference.
+[serverless]: https://github.com/serverless/serverless
 
-## Use-cases
+The `main` branch contains the bare application code with no authorization. The
+`authorized` branch contains the code with authorization in place. You can
+[diff the two branches][diff] to see the authorization footprint.
 
-- API for a Web Application
-- API for a Mobile Application
+[diff]: https://github.com/osohq/serverless-todo-app/compare/authorized
 
-## Setup
+## Steps
 
-```bash
-npm install
-```
+- Clone this repo and `cd` into it.
 
-## Deploy
+- Install dependencies with `npm install`.
 
-In order to deploy the endpoint simply run
+- [Set up AWS credentials for Serverless][serverless-credentials].
 
-```bash
-serverless deploy
-```
+- Deploy the application with `npm run serverless -- deploy`.
 
-The expected result should be similar to:
+- Make some requests with cURL to get a feel for the sans-authorization app.
 
-```bash
-Serverless: Packaging service…
-Serverless: Uploading CloudFormation file to S3…
-Serverless: Uploading service .zip file to S3…
-Serverless: Updating Stack…
-Serverless: Checking Stack update progress…
-Serverless: Stack update finished…
+- Check out the version that has authorization in place: `git checkout
+  authorized`.
 
-Service Information
-service: serverless-rest-api-with-dynamodb
-stage: dev
-region: us-east-1
-api keys:
-  None
-endpoints:
-  POST - https://45wf34z5yf.execute-api.us-east-1.amazonaws.com/dev/todos
-  GET - https://45wf34z5yf.execute-api.us-east-1.amazonaws.com/dev/todos
-  GET - https://45wf34z5yf.execute-api.us-east-1.amazonaws.com/dev/todos/{id}
-  PUT - https://45wf34z5yf.execute-api.us-east-1.amazonaws.com/dev/todos/{id}
-  DELETE - https://45wf34z5yf.execute-api.us-east-1.amazonaws.com/dev/todos/{id}
-functions:
-  serverless-rest-api-with-dynamodb-dev-update: arn:aws:lambda:us-east-1:488110005556:function:serverless-rest-api-with-dynamodb-dev-update
-  serverless-rest-api-with-dynamodb-dev-get: arn:aws:lambda:us-east-1:488110005556:function:serverless-rest-api-with-dynamodb-dev-get
-  serverless-rest-api-with-dynamodb-dev-list: arn:aws:lambda:us-east-1:488110005556:function:serverless-rest-api-with-dynamodb-dev-list
-  serverless-rest-api-with-dynamodb-dev-create: arn:aws:lambda:us-east-1:488110005556:function:serverless-rest-api-with-dynamodb-dev-create
-  serverless-rest-api-with-dynamodb-dev-delete: arn:aws:lambda:us-east-1:488110005556:function:serverless-rest-api-with-dynamodb-dev-delete
-```
+- Redeploy with `npm run serverless -- deploy`.
+
+- Make the same requests again to see the authorization logic in action.
+
+[serverless-credentials]: https://github.com/serverless/serverless/blob/d7b6fb748eba364aabeae3862f89b13262751c06/docs/providers/aws/guide/credentials.md
 
 ## Usage
 
-You can create, retrieve, update, or delete todos with the following commands:
+You can create, retrieve, update, and delete todos with the following commands:
 
-### Create a Todo
+### Create a todo
 
-```bash
-curl -X POST https://XXXXXXX.execute-api.us-east-1.amazonaws.com/dev/todos --data '{ "text": "Learn Serverless" }'
+```console
+$ curl https://<SERVICE_ENDPOINT>/dev/todos -d '{"text":"my first todo!"}'
+{"id":"0cf6cec0-247f-11eb-b64e-4df956b5b3e4","creator":{"country":"US","sourceIp":"1.2.3.4","userAgent":"curl/7.64.1"},"text":"my first todo!","checked":false,"createdAt":1605141365298,"updatedAt":1605141365298}
 ```
 
-Example Result:
-```bash
-{"text":"Learn Serverless","id":"ee6490d0-aa11e6-9ede-afdfa051af86","createdAt":1479138570824,"checked":false,"updatedAt":1479138570824}%
+### List all todos
+
+```console
+$ curl https://<SERVICE_ENDPOINT>/dev/todos
+[{"checked":false,"createdAt":1605141365298,"text":"my first todo!","creator":{"sourceIp":"1.2.3.4","country":"US","userAgent":"curl/7.64.1"},"id":"0cf6cec0-247f-11eb-b64e-4df956b5b3e4","updatedAt":1605141365298}]
 ```
 
-### List all Todos
+### Get a todo
 
-```bash
-curl https://XXXXXXX.execute-api.us-east-1.amazonaws.com/dev/todos
+```console
+$ curl https://<SERVICE_ENDPOINT>/dev/todos/0cf6cec0-247f-11eb-b64e-4df956b5b3e4
+{"checked":false,"createdAt":1605141365298,"text":"my first todo!","creator":{"sourceIp":"1.2.3.4","country":"US","userAgent":"curl/7.64.1"},"id":"0cf6cec0-247f-11eb-b64e-4df956b5b3e4","updatedAt":1605141365298}
 ```
 
-Example output:
-```bash
-[{"text":"Deploy my first service","id":"ac90feaa11e6-9ede-afdfa051af86","checked":true,"updatedAt":1479139961304},{"text":"Learn Serverless","id":"206793aa11e6-9ede-afdfa051af86","createdAt":1479139943241,"checked":false,"updatedAt":1479139943241}]%
+### Update a todo
+
+```console
+$ curl -XPUT https://<SERVICE_ENDPOINT>/dev/todos/0cf6cec0-247f-11eb-b64e-4df956b5b3e4 -d '{"text":"my first updated todo!"}'
+{"checked":false,"createdAt":1605141365298,"text":"my first updated todo!","creator":{"sourceIp":"1.2.3.4","country":"US","userAgent":"curl/7.64.1"},"id":"0cf6cec0-247f-11eb-b64e-4df956b5b3e4","updatedAt":1605141518919}
 ```
 
-### Get one Todo
+### Delete a todo
 
-```bash
-# Replace the <id> part with a real id from your todos table
-curl https://XXXXXXX.execute-api.us-east-1.amazonaws.com/dev/todos/<id>
+```console
+$ curl -XDELETE https://<SERVICE_ENDPOINT>/dev/todos/0cf6cec0-247f-11eb-b64e-4df956b5b3e4
+{"checked":false,"createdAt":1605141365298,"text":"my first updated todo!","creator":{"sourceIp":"1.2.3.4","country":"US","userAgent":"curl/7.64.1"},"id":"0cf6cec0-247f-11eb-b64e-4df956b5b3e4","updatedAt":1605141518919}
 ```
-
-Example Result:
-```bash
-{"text":"Learn Serverless","id":"ee6490d0-aa11e6-9ede-afdfa051af86","createdAt":1479138570824,"checked":false,"updatedAt":1479138570824}%
-```
-
-### Update a Todo
-
-```bash
-# Replace the <id> part with a real id from your todos table
-curl -X PUT https://XXXXXXX.execute-api.us-east-1.amazonaws.com/dev/todos/<id> --data '{ "text": "Learn Serverless", "checked": true }'
-```
-
-Example Result:
-```bash
-{"text":"Learn Serverless","id":"ee6490d0-aa11e6-9ede-afdfa051af86","createdAt":1479138570824,"checked":true,"updatedAt":1479138570824}%
-```
-
-### Delete a Todo
-
-```bash
-# Replace the <id> part with a real id from your todos table
-curl -X DELETE https://XXXXXXX.execute-api.us-east-1.amazonaws.com/dev/todos/<id>
-```
-
-No output
-
-## Scaling
-
-### AWS Lambda
-
-By default, AWS Lambda limits the total concurrent executions across all functions within a given region to 100. The default limit is a safety limit that protects you from costs due to potential runaway or recursive functions during initial development and testing. To increase this limit above the default, follow the steps in [To request a limit increase for concurrent executions](http://docs.aws.amazon.com/lambda/latest/dg/concurrent-executions.html#increase-concurrent-executions-limit).
-
-### DynamoDB
-
-When you create a table, you specify how much provisioned throughput capacity you want to reserve for reads and writes. DynamoDB will reserve the necessary resources to meet your throughput needs while ensuring consistent, low-latency performance. You can change the provisioned throughput and increasing or decreasing capacity as needed.
-
-This is can be done via settings in the `serverless.yml`.
-
-```yaml
-  ProvisionedThroughput:
-    ReadCapacityUnits: 1
-    WriteCapacityUnits: 1
-```
-
-In case you expect a lot of traffic fluctuation we recommend to checkout this guide on how to auto scale DynamoDB [https://aws.amazon.com/blogs/aws/auto-scale-dynamodb-with-dynamic-dynamodb/](https://aws.amazon.com/blogs/aws/auto-scale-dynamodb-with-dynamic-dynamodb/)

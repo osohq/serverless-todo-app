@@ -1,10 +1,16 @@
 {
-  "name": "aws-rest-with-dynamodb",
-  "version": "1.0.0",
-  "description": "Serverless CRUD service exposing a REST HTTP interface",
+  "name": "serverless-todo-app",
+  "version": "0.0.0",
+  "description": "Serverless todo app with authorization via oso",
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "uuid": "^2.0.3"
+    "uuid": "^8.3.1"
+  },
+  "scripts": {
+    "serverless": "./node_modules/serverless/bin/serverless.js"
+  },
+  "devDependencies": {
+    "serverless": "^2.11.1"
   }
 }
