@@ -4,13 +4,14 @@ const { v4: uuidv4 } = require('uuid');
 
 const { User } = require('../User');
 const { createTodo } = require('../db');
-const { error, success } = require('../helpers');
+const { error, may, success } = require('../helpers');
 
 module.exports.create = async (event, _context, cb) => {
   try {
     const creator = User.fromEvent(event);
 
-    // TODO: authorize access.
+    const authorized = await may(creator, 'create');
+    if (!authorized) return error(cb, { statusCode: 403 });
 
     const { text } = JSON.parse(event.body);
     if (typeof text !== 'string') return error(cb, { statusCode: 422 }); // Bad value.

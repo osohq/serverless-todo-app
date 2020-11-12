@@ -2,15 +2,16 @@
 
 const { User } = require('../User');
 const { getTodo, updateTodo } = require('../db');
-const { error, success } = require('../helpers');
+const { error, may, success } = require('../helpers');
 
 module.exports.update = async (event, _context, cb) => {
   try {
-    const _user = User.fromEvent(event);
+    const user = User.fromEvent(event);
     const { id } = event.pathParameters;
     const todo = await getTodo(id);
 
-    // TODO: authorize access.
+    const authorized = await may(user, 'update', todo);
+    if (!authorized) return error(cb, { statusCode: 403 });
 
     let { text, checked } = JSON.parse(event.body);
     // Error if missing both fields.

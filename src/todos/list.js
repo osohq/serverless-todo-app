@@ -2,13 +2,14 @@
 
 const { User } = require('../User');
 const { listTodos } = require('../db');
-const { error, success } = require('../helpers');
+const { error, may, success } = require('../helpers');
 
 module.exports.list = async (event, _context, cb) => {
   try {
-    const _user = User.fromEvent(event);
+    const user = User.fromEvent(event);
 
-    // TODO: authorize access.
+    const authorized = await may(user, 'list');
+    if (!authorized) return error(cb, { statusCode: 403 });
 
     const todos = await listTodos();
     success(cb, todos);
